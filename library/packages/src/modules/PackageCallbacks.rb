@@ -2487,6 +2487,82 @@ module Yast
       nil
     end
 
+    # handle the file conflict detection start callback
+    def FileConflictStart
+      log.info "Starting file conflict check..."
+    end
+
+    # Handle the file conflict detection progress callback.
+    # @param progress [Fixnum] progress in percents
+    # @return [Boolean] true = continue, false = abort
+    def FileConflictProgress(progress)
+      log.debug "File conflict progress: #{progress}%"
+      # TODO: report preogress
+      # TODO: check [Abort]
+      true
+    end
+
+    # Handle the file conflict detection result callback.
+    # Ask to user whether to continue. In the AutoYaST mode an error is reported
+    # but the installation will continue ignoring the confliucts.
+    # @param excluded_packages [Array<String>] packages ignored in the check
+    #   (e.g. not available for check in the download-as-needed mode)
+    # @param conflicts [Array<String>] list of translated descriptions of
+    #   the detected file conflicts
+    # @return [Boolean] true = continue, false = abort
+    def FileConflictReport(excluded_packages, conflicts)
+      log.info "Excluded #{excluded_packages.size} packages in file conflict check"
+      log.debug "Excluded packages: #{excluded_packages.inspect}"
+      log.info "Found #{conflicts.size} conflicts: #{conflicts.join("\n\n")}"
+
+      return true if conflicts.empty?
+
+      # don't ask in autoyast mode, just report/log the issues and continue
+      if Mode.autoinst || Mode.autoupgrade
+        # TRANSLATORS: An error message, %s is the actual list of detected conflicts
+        Report.Error(_("File conflicts detected:\n\n%s") % conflicts.join("\n"))
+        return true
+      end
+
+      button_box = ButtonBox(
+        PushButton(Id(:continue), Opt(:default, :okButton), Label.ContinueButton),
+        PushButton(Id(:cancel), Opt(:cancelButton), Label.CancelButton)
+      )
+
+      # TRANSLATORS: A popup label, use max. 70 chars per line, use more lines if needed
+      label = _("File conflicts happen when two packages attempt to install\n" \
+        "files with the same name but different contents. If you continue,\n" \
+        "the conflicting files will be replaced losing the previous content.")
+
+      # TRANSLATORS: Popup heading
+      heading = n_("A File Conflict Detected", "File Conflicts Detected", conflicts.size)
+
+      dialog = VBox(
+        # TRANSLATORS: A popup header
+        Left(Heading(heading)),
+        VSpacing(0.2),
+        Left(Label(label)),
+        MinSize(65, 15, RichText(Opt(:plainText), conflicts.join("\n\n"))),
+        button_box
+      )
+
+      UI.OpenDialog(dialog)
+
+      begin
+        UI.SetFocus(Id(:continue))
+        ret = UI.UserInput
+        log.info "User Input: #{ret}"
+        return ret == :continue
+      ensure
+        UI.CloseDialog
+      end
+    end
+
+    # Handle the file conflict detection finish callback.
+    def FileConflictFinish
+      log.info "File conflict check finished"
+    end
+
     # Register callbacks for media change
     def SetMediaCallbacks
       Pkg.CallbackMediaChange(
@@ -2759,6 +2835,13 @@ module Yast
       nil
     end
 
+    def SetFileConflictsCallbacks
+      Pkg.CallbackFileConflictStart(fun_ref(method(:FileConflictStart), "void ()"))
+      Pkg.CallbackFileConflictProgress(fun_ref(method(:FileConflictProgress), "boolean (intreger)"))
+      Pkg.CallbackFileConflictReport(fun_ref(method(:FileConflictReport), "boolean (list<string>, list<string>)"))
+      Pkg.CallbackFileConflictFinish(fun_ref(method(:FileConflictFinish), "void ()"))
+    end
+
     # Register package manager callbacks
     def InitPackageCallbacks
       SetProcessCallbacks()
@@ -2774,6 +2857,8 @@ module Yast
       SetSourceReportCallbacks()
 
       SetProgressReportCallbacks()
+
+      SetFileConflictsCallbacks()
 
       # authentication callback
       Pkg.CallbackAuthentication(
