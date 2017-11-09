@@ -16,6 +16,9 @@ module_DATA = \
   modules/SLPAPI.pm \
   modules/DnsServerAPI.pm
 
+client_DATA = \
+  y2firewall/clients/open_service.rb
+
 scrconf_DATA = \
   scrconf/sysconfig_SuSEfirewall2.scr \
   scrconf/net_showexports.scr \
@@ -43,6 +46,6 @@ yfwdlib_DATA = \
   lib/y2firewall/firewalld/api.rb
 
 
-EXTRA_DIST = $(module_DATA) $(scrconf_DATA) $(agent_SCRIPTS) $(ylib_DATA) $(yfwlib_DATA) $(yfwdlibdir_DATA)
+EXTRA_DIST = $(module_DATA) $(scrconf_DATA) $(agent_SCRIPTS) $(ylib_DATA) $(yfwlib_DATA) $(yfwdlibdir_DATA) $(client_DATA)
 
 include $(top_srcdir)/Makefile.am.common

@@ -805,7 +805,7 @@ module Yast
         Builtins.y2error("Firewall widget doesn't exist")
         return
       end
-      services = Ops.get_list(widget, "services", [])
+      services = widget.fetch("services", [])
       InitAllInterfacesList()
 
       begin
@@ -1037,32 +1037,12 @@ module Yast
     # </pre>
     # @return [Hash] the widget description map
     def CreateOpenFirewallWidget(settings)
-      settings = deep_copy(settings)
+      open_firewall_checkbox = settings.fetch("open_firewall_checkbox", _("Open Port in &Firewall"))
 
-      open_firewall_checkbox = Ops.get_locale(
-        settings,
-        "open_firewall_checkbox",
-        # check box
-        _("Open Port in &Firewall")
-      )
-      # push button
+      firewall_details_button = settings.fetch("firewall_details_button", _("Firewall &Details..."))
 
-      firewall_details_button = Ops.get_locale(
-        settings,
-        "firewall_details_button",
-        _("Firewall &Details...")
-      )
-
-      display_firewall_details = Builtins.haskey(
-        settings,
-        "firewall_details_handler"
-      ) ||
-        Ops.get_boolean(settings, "display_details", false)
-      help = if Builtins.haskey(settings, "help")
-        Ops.get_string(settings, "help", "")
-      else
-        OpenFirewallHelp(display_firewall_details)
-      end
+      display_firewall_details = settings.include?("firewall_details_handler") || settings.fetch("display_details", false)
+      help = settings.fetch("help", OpenFirewallHelp(display_firewall_details))
 
       firewall_settings = CheckBox(
         Id("_cwm_open_firewall"),
